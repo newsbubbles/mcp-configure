@@ -40,12 +40,16 @@
       font-weight: 600;
       margin-bottom: 5px;
     }
-    input[type="text"] {
+    input[type="text"], textarea {
       width: 100%;
       padding: 8px;
       margin-bottom: 10px;
       border: 1px solid #ccc;
       border-radius: 4px;
+    }
+    textarea {
+      resize: vertical;
+      min-height: 100px;
     }
     button {
       background-color: #007BFF;
@@ -61,7 +65,7 @@
     button:hover {
       background-color: #0056b3;
     }
-    .server-entry {
+    .server-entry, .pasted-config-entry {
       border: 1px solid #e0e0e0;
       padding: 15px;
       margin-bottom: 20px;
@@ -94,6 +98,10 @@
       overflow-x: auto;
       font-size: 0.9rem;
     }
+    .button-group {
+      text-align: center;
+      margin-bottom: 20px;
+    }
     .copy-container {
       text-align: center;
       margin-top: 10px;
@@ -109,10 +117,17 @@
 <body>
   <div class="container">
     <h1>MCP Servers Configurator</h1>
-
+    <div class="button-group">
+      <button id="addServerBtn" type="button">Add Server</button>
+      <button id="addPastedConfigBtn" type="button">Add Server Config</button>
+    </div>
+    
+    <!-- Section for manually added server entries -->
     <div id="serversContainer"></div>
-    <button id="addServerBtn" type="button">Add Server</button>
-
+    
+    <!-- Container for pasted server configuration sections -->
+    <div id="pastedConfigsContainer"></div>
+    
     <h2>JSON Configuration</h2>
     <pre id="jsonOutput">{ "mcpServers": {} }</pre>
     <div class="copy-container">
@@ -121,11 +136,12 @@
   </div>
 
   <script>
-    // Update JSON output based on current form data.
+    // Update JSON output based on manual form data and pasted JSON config sections.
     function updateJSONOutput() {
+      // Build manual config from form entries.
       const serversContainer = document.getElementById('serversContainer');
       const serverEntries = serversContainer.querySelectorAll('.server-entry');
-      const mcpServers = {};
+      const manualConfig = {};
 
       serverEntries.forEach(entry => {
         const keyInput = entry.querySelector('.server-key');
@@ -153,19 +169,42 @@
           }
         });
 
-        // Build the server object
+        // Build the server object.
         const serverObj = {};
-        if (command) {
-          serverObj.command = command;
-        }
+        if (command) serverObj.command = command;
         serverObj.args = args;
-        if (Object.keys(env).length > 0) {
-          serverObj.env = env;
-        }
-        mcpServers[serverKey] = serverObj;
+        if (Object.keys(env).length > 0) serverObj.env = env;
+        manualConfig[serverKey] = serverObj;
       });
 
-      const output = { mcpServers };
+      // Process pasted JSON configurations.
+      const pastedConfigsContainer = document.getElementById('pastedConfigsContainer');
+      const pastedEntries = pastedConfigsContainer.querySelectorAll('.pasted-config-entry');
+      const pastedConfigMerged = {};
+
+      pastedEntries.forEach(entry => {
+        const textarea = entry.querySelector('textarea');
+        const pastedText = textarea.value.trim();
+        if (pastedText) {
+          try {
+            const parsed = JSON.parse(pastedText);
+            if (parsed && typeof parsed === "object" && parsed.mcpServers && typeof parsed.mcpServers === "object") {
+              Object.assign(pastedConfigMerged, parsed.mcpServers);
+              textarea.style.borderColor = "";
+            } else {
+              textarea.style.borderColor = "red";
+            }
+          } catch (e) {
+            textarea.style.borderColor = "red";
+          }
+        } else {
+          textarea.style.borderColor = "";
+        }
+      });
+
+      // Merge manual and pasted configs (pasted config overrides manual on conflict).
+      const mergedServers = Object.assign({}, manualConfig, pastedConfigMerged);
+      const output = { mcpServers: mergedServers };
       document.getElementById('jsonOutput').textContent = JSON.stringify(output, null, 2);
     }
 
@@ -303,6 +342,42 @@
       updateJSONOutput();
     }
 
+    // Adds a new pasted server config section.
+    function addPastedConfig() {
+      const container = document.getElementById('pastedConfigsContainer');
+      const configDiv = document.createElement('div');
+      configDiv.className = 'pasted-config-entry';
+
+      const label = document.createElement('label');
+      label.textContent = 'Paste JSON Server Config:';
+      configDiv.appendChild(label);
+
+      const textarea = document.createElement('textarea');
+      textarea.placeholder = `{
+  "mcpServers": {
+    "example": {
+      "command": "npx",
+      "args": ["-y", "example/package"],
+      "env": {"EXAMPLE_TOKEN": "value"}
+    }
+  }
+}`;
+      textarea.addEventListener('input', updateJSONOutput);
+      configDiv.appendChild(textarea);
+
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = 'Remove Config';
+      removeBtn.addEventListener('click', () => {
+        configDiv.remove();
+        updateJSONOutput();
+      });
+      configDiv.appendChild(removeBtn);
+
+      container.appendChild(configDiv);
+      updateJSONOutput();
+    }
+
     // Copy JSON configuration to clipboard.
     function copyJSON() {
       const jsonOutput = document.getElementById('jsonOutput').textContent;
@@ -313,14 +388,15 @@
       });
     }
 
-    // Initialize: set up Add Server and Copy JSON buttons.
+    // Initialize: set up buttons and event listeners.
     document.getElementById('addServerBtn').addEventListener('click', addServer);
+    document.getElementById('addPastedConfigBtn').addEventListener('click', addPastedConfig);
     document.getElementById('copyBtn').addEventListener('click', copyJSON);
 
     // Optionally, add an initial server entry on load.
-    window.addEventListener('DOMContentLoaded', () => {
-      addServer();
-    });
+    // window.addEventListener('DOMContentLoaded', () => {
+    //   addServer();
+    // });
   </script>
 </body>
 </html>
