@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MCP Servers Configurator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      max-width: 800px;
+    }
+    h1 {
+      text-align: center;
+    }
+    .server-entry {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 5px;
+    }
+    .server-entry label {
+      display: block;
+      margin-bottom: 8px;
+    }
+    .section {
+      margin: 10px 0;
+    }
+    .section span {
+      font-weight: bold;
+    }
+    .item {
+      margin: 5px 0;
+    }
+    .item input {
+      margin-right: 5px;
+    }
+    button {
+      margin-top: 5px;
+      margin-right: 5px;
+    }
+    pre {
+      background: #f8f8f8;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      overflow: auto;
+    }
+  </style>
+</head>
+<body>
+  <h1>MCP Servers Configurator</h1>
+
+  <div id="serversContainer"></div>
+  <button id="addServerBtn" type="button">Add Server</button>
+
+  <h2>JSON Configuration</h2>
+  <pre id="jsonOutput">{ "mcpServers": {} }</pre>
+
+  <script>
+    // Updates the JSON output based on the current form data.
+    function updateJSONOutput() {
+      const serversContainer = document.getElementById('serversContainer');
+      const serverEntries = serversContainer.querySelectorAll('.server-entry');
+      const mcpServers = {};
+
+      serverEntries.forEach(entry => {
+        const keyInput = entry.querySelector('.server-key');
+        const commandInput = entry.querySelector('.server-command');
+        const serverKey = keyInput.value.trim();
+        if (!serverKey) return; // Skip if no key provided
+
+        const command = commandInput.value.trim();
+        // Gather arguments
+        const args = [];
+        entry.querySelectorAll('.arg-input').forEach(argInput => {
+          const argVal = argInput.value.trim();
+          if (argVal) args.push(argVal);
+        });
+
+        // Gather env variables
+        const env = {};
+        entry.querySelectorAll('.env-item').forEach(envItem => {
+          const keyEl = envItem.querySelector('.env-key');
+          const valueEl = envItem.querySelector('.env-value');
+          const envKey = keyEl.value.trim();
+          const envValue = valueEl.value.trim();
+          if (envKey) {
+            env[envKey] = envValue;
+          }
+        });
+
+        // Build the server object
+        const serverObj = {};
+        if (command) {
+          serverObj.command = command;
+        }
+        serverObj.args = args;
+        if (Object.keys(env).length > 0) {
+          serverObj.env = env;
+        }
+        mcpServers[serverKey] = serverObj;
+      });
+
+      const output = { mcpServers };
+      document.getElementById('jsonOutput').textContent = JSON.stringify(output, null, 2);
+    }
+
+    // Adds a new argument input field to a server entry.
+    function addArgument(container) {
+      const div = document.createElement('div');
+      div.className = 'item';
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.placeholder = 'Argument';
+      input.className = 'arg-input';
+      input.addEventListener('input', updateJSONOutput);
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', () => {
+        div.remove();
+        updateJSONOutput();
+      });
+      div.appendChild(input);
+      div.appendChild(removeBtn);
+      container.appendChild(div);
+    }
+
+    // Adds a new environment variable key-value pair to a server entry.
+    function addEnvVariable(container) {
+      const div = document.createElement('div');
+      div.className = 'item env-item';
+      
+      const keyInput = document.createElement('input');
+      keyInput.type = 'text';
+      keyInput.placeholder = 'Env Key';
+      keyInput.className = 'env-key';
+      keyInput.addEventListener('input', updateJSONOutput);
+      
+      const valueInput = document.createElement('input');
+      valueInput.type = 'text';
+      valueInput.placeholder = 'Env Value';
+      valueInput.className = 'env-value';
+      valueInput.addEventListener('input', updateJSONOutput);
+      
+      const removeBtn = document.createElement('button');
+      removeBtn.type = 'button';
+      removeBtn.textContent = 'Remove';
+      removeBtn.addEventListener('click', () => {
+        div.remove();
+        updateJSONOutput();
+      });
+      
+      div.appendChild(keyInput);
+      div.appendChild(valueInput);
+      div.appendChild(removeBtn);
+      container.appendChild(div);
+    }
+
+    // Adds a new MCP server entry form.
+    function addServer() {
+      const serversContainer = document.getElementById('serversContainer');
+      const serverDiv = document.createElement('div');
+      serverDiv.className = 'server-entry';
+
+      // Server Key input
+      const keyLabel = document.createElement('label');
+      keyLabel.textContent = 'Server Key:';
+      const keyInput = document.createElement('input');
+      keyInput.type = 'text';
+      keyInput.placeholder = 'Enter unique key';
+      keyInput.className = 'server-key';
+      keyInput.addEventListener('input', updateJSONOutput);
+      keyLabel.appendChild(keyInput);
+      serverDiv.appendChild(keyLabel);
+
+      // Command input
+      const commandLabel = document.createElement('label');
+      commandLabel.textContent = 'Command:';
+      const commandInput = document.createElement('input');
+      commandInput.type = 'text';
+      commandInput.placeholder = 'Enter command';
+      commandInput.className = 'server-command';
+      commandInput.addEventListener('input', updateJSONOutput);
+      commandLabel.appendChild(commandInput);
+      serverDiv.appendChild(commandLabel);
+
+      // Arguments section
+      const argsSection = document.createElement('div');
+      argsSection.className = 'section';
+      const argsTitle = document.createElement('span');
+      argsTitle.textContent = 'Arguments:';
+      argsSection.appendChild(argsTitle);
+      
+      const argsContainer = document.createElement('div');
+      argsContainer.className = 'args-container';
+      argsSection.appendChild(argsContainer);
+      
+      const addArgBtn = document.createElement('button');
+      addArgBtn.type = 'button';
+      addArgBtn.textContent = 'Add Argument';
+      addArgBtn.addEventListener('click', () => {
+        addArgument(argsContainer);
+      });
+      argsSection.appendChild(addArgBtn);
+      serverDiv.appendChild(argsSection);
+
+      // Environment Variables section
+      const envSection = document.createElement('div');
+      envSection.className = 'section';
+      const envTitle = document.createElement('span');
+      envTitle.textContent = 'Environment Variables:';
+      envSection.appendChild(envTitle);
+      
+      const envContainer = document.createElement('div');
+      envContainer.className = 'env-container';
+      envSection.appendChild(envContainer);
+      
+      const addEnvBtn = document.createElement('button');
+      addEnvBtn.type = 'button';
+      addEnvBtn.textContent = 'Add Env Variable';
+      addEnvBtn.addEventListener('click', () => {
+        addEnvVariable(envContainer);
+      });
+      envSection.appendChild(addEnvBtn);
+      serverDiv.appendChild(envSection);
+
+      // Remove server button
+      const removeServerBtn = document.createElement('button');
+      removeServerBtn.type = 'button';
+      removeServerBtn.textContent = 'Remove Server';
+      removeServerBtn.addEventListener('click', () => {
+        serverDiv.remove();
+        updateJSONOutput();
+      });
+      serverDiv.appendChild(removeServerBtn);
+
+      serversContainer.appendChild(serverDiv);
+      updateJSONOutput();
+    }
+
+    // Initialize: set up Add Server button
+    document.getElementById('addServerBtn').addEventListener('click', addServer);
+
+    // Optionally, add an initial server entry on load
+    window.addEventListener('DOMContentLoaded', () => {
+      addServer();
+    });
+  </script>
+</body>
+</html>
