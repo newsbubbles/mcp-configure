@@ -94,6 +94,10 @@
       overflow-x: auto;
       font-size: 0.9rem;
     }
+    .copy-container {
+      text-align: center;
+      margin-top: 10px;
+    }
     /* Media Query for larger screens */
     @media (min-width: 768px) {
       .item {
@@ -111,6 +115,9 @@
 
     <h2>JSON Configuration</h2>
     <pre id="jsonOutput">{ "mcpServers": {} }</pre>
+    <div class="copy-container">
+      <button id="copyBtn" type="button">Copy JSON</button>
+    </div>
   </div>
 
   <script>
@@ -296,10 +303,21 @@
       updateJSONOutput();
     }
 
-    // Initialize: set up Add Server button
-    document.getElementById('addServerBtn').addEventListener('click', addServer);
+    // Copy JSON configuration to clipboard.
+    function copyJSON() {
+      const jsonOutput = document.getElementById('jsonOutput').textContent;
+      navigator.clipboard.writeText(jsonOutput).then(() => {
+        alert('JSON copied to clipboard!');
+      }).catch(err => {
+        alert('Failed to copy JSON: ' + err);
+      });
+    }
 
-    // Optionally, add an initial server entry on load
+    // Initialize: set up Add Server and Copy JSON buttons.
+    document.getElementById('addServerBtn').addEventListener('click', addServer);
+    document.getElementById('copyBtn').addEventListener('click', copyJSON);
+
+    // Optionally, add an initial server entry on load.
     window.addEventListener('DOMContentLoaded', () => {
       addServer();
     });
